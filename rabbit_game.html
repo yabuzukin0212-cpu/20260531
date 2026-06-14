@@ -423,8 +423,8 @@
             const mushroom = document.createElement('div');
             mushroom.className = 'mushroom';
 
-            const x = Math.random() * (gameContainer.offsetWidth - 50);
-            const y = Math.random() * (gameContainer.offsetHeight - 200);
+            let x = Math.random() * (gameContainer.offsetWidth - 50);
+            let y = Math.random() * (gameContainer.offsetHeight - 200);
 
             mushroom.style.left = x + 'px';
             mushroom.style.top = y + 'px';
@@ -439,6 +439,40 @@
             `;
 
             gameContainer.appendChild(mushroom);
+
+            // キノコが移動する
+            const moveInterval = setInterval(() => {
+                if (!gameActive || !document.body.contains(mushroom)) {
+                    clearInterval(moveInterval);
+                    return;
+                }
+
+                // ウサギとの距離を計算
+                const mushroomRect = mushroom.getBoundingClientRect();
+                const gameRect = gameContainer.getBoundingClientRect();
+                const mushroomCenterX = mushroomRect.left - gameRect.left + 25;
+                const mushroomCenterY = mushroomRect.top - gameRect.top + 25;
+
+                const distance = Math.sqrt(
+                    Math.pow(rabbitX - mushroomCenterX, 2) + Math.pow(rabbitY - mushroomCenterY, 2)
+                );
+
+                // ウサギが近い場合は逃げる
+                if (distance < 200) {
+                    const angle = Math.atan2(mushroomCenterY - rabbitY, mushroomCenterX - rabbitX);
+                    const moveDistance = 3;
+                    
+                    x -= Math.cos(angle) * moveDistance;
+                    y -= Math.sin(angle) * moveDistance;
+
+                    // 画面外に出ないように制限
+                    x = Math.max(10, Math.min(x, gameContainer.offsetWidth - 60));
+                    y = Math.max(10, Math.min(y, gameContainer.offsetHeight - 60));
+
+                    mushroom.style.left = x + 'px';
+                    mushroom.style.top = y + 'px';
+                }
+            }, 100);
 
             // キノコが攻撃する
             const attackInterval = setInterval(() => {
@@ -455,6 +489,7 @@
                 if (document.body.contains(mushroom)) {
                     mushroom.remove();
                 }
+                clearInterval(moveInterval);
                 clearInterval(attackInterval);
             }, 15000);
         }
