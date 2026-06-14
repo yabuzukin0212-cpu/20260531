@@ -29,6 +29,7 @@
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            cursor: crosshair;
         }
 
         .game-info {
@@ -77,16 +78,12 @@
             position: absolute;
             width: 60px;
             height: 60px;
-            bottom: 20px;
             left: 50%;
-            transform: translateX(-50%);
+            top: 50%;
+            transform: translate(-50%, -50%);
             z-index: 5;
-            cursor: grab;
             user-select: none;
-        }
-
-        .rabbit:active {
-            cursor: grabbing;
+            transition: left 0.3s, top 0.3s;
         }
 
         .rabbit-body {
@@ -283,7 +280,7 @@
 
         <div class="combo" id="combo">コンボ: <span id="comboCount">0</span></div>
 
-        <div class="rabbit" id="rabbit" draggable="true">
+        <div class="rabbit" id="rabbit">
             <div class="rabbit-head">
                 <div class="rabbit-ear rabbit-ear-left"></div>
                 <div class="rabbit-ear rabbit-ear-right"></div>
@@ -300,7 +297,7 @@
             <button class="restart-button" onclick="location.reload()">もう一度プレイ</button>
         </div>
 
-        <div class="instruction">クリックでキ���コを倒す！ウサギが倒されないように注意</div>
+        <div class="instruction">画面をタップしてウサギを動かし、キノコを倒す！</div>
     </div>
 
     <script>
@@ -318,37 +315,107 @@
         let combo = 0;
         let lastKillTime = 0;
         let gameActive = true;
+        let rabbitX = 400; // ウサギの現在のX座標（画面内の相対位置）
+        let rabbitY = 300; // ウサギの現在のY座標（画面内の相対位置）
 
-        // ウサギのドラッグ機能
-        let isDragging = false;
-        let dragX = 0;
-        let dragY = 0;
+        // 画面タップでウサギを移動
+        gameContainer.addEventListener('click', (e) => {
+            if (!gameActive) return;
 
-        rabbit.addEventListener('dragstart', (e) => {
-            isDragging = true;
-            dragX = e.clientX - rabbit.getBoundingClientRect().left;
-            dragY = e.clientY - rabbit.getBoundingClientRect().top;
+            const rect = gameContainer.getBoundingClientRect();
+            let targetX = e.clientX - rect.left;
+            let targetY = e.clientY - rect.top;
+
+            // ウサギが画面内に留まるように制限
+            targetX = Math.max(30, Math.min(targetX, gameContainer.offsetWidth - 30));
+            targetY = Math.max(30, Math.min(targetY, gameContainer.offsetHeight - 30));
+
+            // ウサギを移動
+            rabbitX = targetX;
+            rabbitY = targetY;
+            rabbit.style.left = rabbitX + 'px';
+            rabbit.style.top = rabbitY + 'px';
+
+            // タップ位置の周辺のキノコを倒す
+            checkMushroomHit(targetX, targetY);
         });
 
-        document.addEventListener('dragover', (e) => {
-            e.preventDefault();
+        // タッチイベント対応（モバイル）
+        gameContainer.addEventListener('touchstart', (e) => {
+            if (!gameActive) return;
+
+            const rect = gameContainer.getBoundingClientRect();
+            const touch = e.touches[0];
+            let targetX = touch.clientX - rect.left;
+            let targetY = touch.clientY - rect.top;
+
+            // ウサギが画面内に留まるように制限
+            targetX = Math.max(30, Math.min(targetX, gameContainer.offsetWidth - 30));
+            targetY = Math.max(30, Math.min(targetY, gameContainer.offsetHeight - 30));
+
+            // ウサギを移動
+            rabbitX = targetX;
+            rabbitY = targetY;
+            rabbit.style.left = rabbitX + 'px';
+            rabbit.style.top = rabbitY + 'px';
+
+            // タップ位置の周辺のキノコを倒す
+            checkMushroomHit(targetX, targetY);
         });
 
-        document.addEventListener('drop', (e) => {
-            if (isDragging && gameActive) {
-                const rect = gameContainer.getBoundingClientRect();
-                let newX = e.clientX - rect.left - dragX;
-                let newY = e.clientY - rect.top - dragY;
+        function checkMushroomHit(targetX, targetY) {
+            const mushrooms = document.querySelectorAll('.mushroom');
+            const hitRange = 80; // キノコが倒される範囲
 
-                // ウサギが画面内に留まるように制限
-                newX = Math.max(0, Math.min(newX, gameContainer.offsetWidth - 60));
-                newY = Math.max(0, Math.min(newY, gameContainer.offsetHeight - 60));
+            mushrooms.forEach(mushroom => {
+                const mushroomRect = mushroom.getBoundingClientRect();
+                const gameRect = gameContainer.getBoundingClientRect();
 
-                rabbit.style.left = (newX + 30) + 'px';
-                rabbit.style.top = newY + 'px';
-            }
-            isDragging = false;
-        });
+                const mushroomX = mushroomRect.left - gameRect.left + 25;
+                const mushroomY = mushroomRect.top - gameRect.top + 25;
+
+                const distance = Math.sqrt(
+                    Math.pow(targetX - mushroomX, 2) + Math.pow(targetY - mushroomY, 2)
+                );
+
+                if (distance < hitRange) {
+                    // キノコを倒す
+                    score += 10 + combo * 5;
+                    updateCombo();
+                    scoreDisplay.textContent = score;
+
+                    // スコア表示アニメーション
+                    const scorePopup = document.createElement('div');
+                    scorePopup.style.position = 'absolute';
+                    scorePopup.style.left = mushroomX + 'px';
+                    scorePopup.style.top = mushroomY + 'px';
+                    scorePopup.style.color = '#ffaa44';
+                    scorePopup.style.fontSize = '20px';
+                    scorePopup.style.fontWeight = 'bold';
+                    scorePopup.style.pointerEvents = 'none';
+                    scorePopup.style.zIndex = '8';
+                    scorePopup.textContent = '+' + (10 + combo * 5);
+
+                    gameContainer.appendChild(scorePopup);
+
+                    let opacity = 1;
+                    let popupY = mushroomY;
+                    const interval = setInterval(() => {
+                        opacity -= 0.05;
+                        scorePopup.style.opacity = opacity;
+                        scorePopup.style.top = popupY + 'px';
+                        popupY -= 2;
+
+                        if (opacity <= 0) {
+                            clearInterval(interval);
+                            scorePopup.remove();
+                        }
+                    }, 30);
+
+                    mushroom.remove();
+                }
+            });
+        }
 
         function createMushroom() {
             if (!gameActive) return;
@@ -372,44 +439,6 @@
             `;
 
             gameContainer.appendChild(mushroom);
-
-            mushroom.addEventListener('click', (e) => {
-                if (!gameActive) return;
-                e.stopPropagation();
-
-                score += 10 + combo * 5;
-                updateCombo();
-                scoreDisplay.textContent = score;
-
-                // スコア表示アニメーション
-                const scorePopup = document.createElement('div');
-                scorePopup.style.position = 'absolute';
-                scorePopup.style.left = x + 'px';
-                scorePopup.style.top = y + 'px';
-                scorePopup.style.color = '#ffaa44';
-                scorePopup.style.fontSize = '20px';
-                scorePopup.style.fontWeight = 'bold';
-                scorePopup.style.pointerEvents = 'none';
-                scorePopup.style.zIndex = '8';
-                scorePopup.textContent = '+' + (10 + combo * 5);
-
-                gameContainer.appendChild(scorePopup);
-
-                let opacity = 1;
-                const interval = setInterval(() => {
-                    opacity -= 0.05;
-                    scorePopup.style.opacity = opacity;
-                    scorePopup.style.top = (y - 20) + 'px';
-                    y -= 2;
-
-                    if (opacity <= 0) {
-                        clearInterval(interval);
-                        scorePopup.remove();
-                    }
-                }, 30);
-
-                mushroom.remove();
-            });
 
             // キノコが攻撃する
             const attackInterval = setInterval(() => {
@@ -445,12 +474,6 @@
 
         function attackRabbit(x, y) {
             if (!gameActive) return;
-
-            const rabbitRect = rabbit.getBoundingClientRect();
-            const gameRect = gameContainer.getBoundingClientRect();
-
-            const rabbitX = rabbitRect.left - gameRect.left;
-            const rabbitY = rabbitRect.top - gameRect.top;
 
             const distance = Math.sqrt(
                 Math.pow(rabbitX - x, 2) + Math.pow(rabbitY - y, 2)
