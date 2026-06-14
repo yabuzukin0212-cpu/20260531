@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ウサギのキノコ倒しゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+        }
+
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 70%, #228B22 100%);
+            border: 5px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .score {
+            font-size: 20px;
+            color: #333;
+        }
+
+        .health-bar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+
+        .health-fill {
+            width: 100px;
+            height: 20px;
+            background: #ddd;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .health-value {
+            height: 100%;
+            background: linear-gradient(to right, #ff4444, #ffaa44, #44ff44);
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        .rabbit {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .rabbit:active {
+            cursor: grabbing;
+        }
+
+        .rabbit-body {
+            position: absolute;
+            width: 40px;
+            height: 35px;
+            background: white;
+            border-radius: 20px;
+            left: 10px;
+            top: 15px;
+            border: 2px solid #333;
+        }
+
+        .rabbit-head {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: white;
+            border-radius: 15px;
+            left: 15px;
+            top: 0;
+            border: 2px solid #333;
+        }
+
+        .rabbit-ear {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: white;
+            border-radius: 4px;
+            border: 2px solid #333;
+            top: -5px;
+        }
+
+        .rabbit-ear-left {
+            left: 8px;
+        }
+
+        .rabbit-ear-right {
+            right: 8px;
+        }
+
+        .rabbit-eye {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: #333;
+            border-radius: 50%;
+        }
+
+        .rabbit-eye-left {
+            left: 8px;
+            top: 8px;
+        }
+
+        .rabbit-eye-right {
+            right: 8px;
+            top: 8px;
+        }
+
+        .rabbit-tail {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            right: 5px;
+            bottom: 5px;
+            border: 2px solid #333;
+        }
+
+        .mushroom {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .mushroom:hover {
+            transform: scale(1.1);
+        }
+
+        .mushroom-cap {
+            position: absolute;
+            width: 50px;
+            height: 30px;
+            background: radial-gradient(ellipse at 30% 30%, #ff6b6b, #cc0000);
+            border-radius: 50% 50% 0 0;
+            top: 0;
+        }
+
+        .mushroom-stem {
+            position: absolute;
+            width: 20px;
+            height: 25px;
+            background: #f0e68c;
+            border: 1px solid #d4af37;
+            left: 15px;
+            top: 25px;
+        }
+
+        .mushroom-spot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            font-size: 28px;
+        }
+
+        .game-over-text {
+            margin-bottom: 20px;
+        }
+
+        .game-over-score {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffaa44;
+            margin-bottom: 20px;
+        }
+
+        .restart-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .restart-button:hover {
+            background: #764ba2;
+        }
+
+        .combo {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(255, 200, 0, 0.9);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 18px;
+            display: none;
+            z-index: 10;
+        }
+
+        .instruction {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #333;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="game-info">
+            <div class="score">スコア: <span id="score">0</span></div>
+        </div>
+
+        <div class="health-bar">
+            <div>ウサギHP</div>
+            <div class="health-fill">
+                <div class="health-value" id="healthValue"></div>
+            </div>
+        </div>
+
+        <div class="combo" id="combo">コンボ: <span id="comboCount">0</span></div>
+
+        <div class="rabbit" id="rabbit" draggable="true">
+            <div class="rabbit-head">
+                <div class="rabbit-ear rabbit-ear-left"></div>
+                <div class="rabbit-ear rabbit-ear-right"></div>
+                <div class="rabbit-eye rabbit-eye-left"></div>
+                <div class="rabbit-eye rabbit-eye-right"></div>
+            </div>
+            <div class="rabbit-body"></div>
+            <div class="rabbit-tail"></div>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <div class="game-over-text">ゲームオーバー！</div>
+            <div class="game-over-score">スコア: <span id="finalScore">0</span></div>
+            <button class="restart-button" onclick="location.reload()">もう一度プレイ</button>
+        </div>
+
+        <div class="instruction">クリックでキ���コを倒す！ウサギが倒されないように注意</div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const rabbit = document.getElementById('rabbit');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const healthValue = document.getElementById('healthValue');
+        const comboDisplay = document.getElementById('combo');
+        const comboCount = document.getElementById('comboCount');
+
+        let score = 0;
+        let rabbitHealth = 100;
+        let combo = 0;
+        let lastKillTime = 0;
+        let gameActive = true;
+
+        // ウサギのドラッグ機能
+        let isDragging = false;
+        let dragX = 0;
+        let dragY = 0;
+
+        rabbit.addEventListener('dragstart', (e) => {
+            isDragging = true;
+            dragX = e.clientX - rabbit.getBoundingClientRect().left;
+            dragY = e.clientY - rabbit.getBoundingClientRect().top;
+        });
+
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('drop', (e) => {
+            if (isDragging && gameActive) {
+                const rect = gameContainer.getBoundingClientRect();
+                let newX = e.clientX - rect.left - dragX;
+                let newY = e.clientY - rect.top - dragY;
+
+                // ウサギが画面内に留まるように制限
+                newX = Math.max(0, Math.min(newX, gameContainer.offsetWidth - 60));
+                newY = Math.max(0, Math.min(newY, gameContainer.offsetHeight - 60));
+
+                rabbit.style.left = (newX + 30) + 'px';
+                rabbit.style.top = newY + 'px';
+            }
+            isDragging = false;
+        });
+
+        function createMushroom() {
+            if (!gameActive) return;
+
+            const mushroom = document.createElement('div');
+            mushroom.className = 'mushroom';
+
+            const x = Math.random() * (gameContainer.offsetWidth - 50);
+            const y = Math.random() * (gameContainer.offsetHeight - 200);
+
+            mushroom.style.left = x + 'px';
+            mushroom.style.top = y + 'px';
+
+            mushroom.innerHTML = `
+                <div class="mushroom-cap">
+                    <div class="mushroom-spot" style="left: 8px; top: 5px;"></div>
+                    <div class="mushroom-spot" style="left: 25px; top: 8px;"></div>
+                    <div class="mushroom-spot" style="left: 38px; top: 5px;"></div>
+                </div>
+                <div class="mushroom-stem"></div>
+            `;
+
+            gameContainer.appendChild(mushroom);
+
+            mushroom.addEventListener('click', (e) => {
+                if (!gameActive) return;
+                e.stopPropagation();
+
+                score += 10 + combo * 5;
+                updateCombo();
+                scoreDisplay.textContent = score;
+
+                // スコア表示アニメーション
+                const scorePopup = document.createElement('div');
+                scorePopup.style.position = 'absolute';
+                scorePopup.style.left = x + 'px';
+                scorePopup.style.top = y + 'px';
+                scorePopup.style.color = '#ffaa44';
+                scorePopup.style.fontSize = '20px';
+                scorePopup.style.fontWeight = 'bold';
+                scorePopup.style.pointerEvents = 'none';
+                scorePopup.style.zIndex = '8';
+                scorePopup.textContent = '+' + (10 + combo * 5);
+
+                gameContainer.appendChild(scorePopup);
+
+                let opacity = 1;
+                const interval = setInterval(() => {
+                    opacity -= 0.05;
+                    scorePopup.style.opacity = opacity;
+                    scorePopup.style.top = (y - 20) + 'px';
+                    y -= 2;
+
+                    if (opacity <= 0) {
+                        clearInterval(interval);
+                        scorePopup.remove();
+                    }
+                }, 30);
+
+                mushroom.remove();
+            });
+
+            // キノコが攻撃する
+            const attackInterval = setInterval(() => {
+                if (!gameActive || !document.body.contains(mushroom)) {
+                    clearInterval(attackInterval);
+                    return;
+                }
+
+                attackRabbit(x, y);
+            }, 2000 + Math.random() * 2000);
+
+            // キノコが自動消滅
+            setTimeout(() => {
+                if (document.body.contains(mushroom)) {
+                    mushroom.remove();
+                }
+                clearInterval(attackInterval);
+            }, 15000);
+        }
+
+        function updateCombo() {
+            const now = Date.now();
+            if (now - lastKillTime < 3000) {
+                combo++;
+            } else {
+                combo = 1;
+            }
+            lastKillTime = now;
+
+            comboCount.textContent = combo;
+            comboDisplay.style.display = combo > 1 ? 'block' : 'none';
+        }
+
+        function attackRabbit(x, y) {
+            if (!gameActive) return;
+
+            const rabbitRect = rabbit.getBoundingClientRect();
+            const gameRect = gameContainer.getBoundingClientRect();
+
+            const rabbitX = rabbitRect.left - gameRect.left;
+            const rabbitY = rabbitRect.top - gameRect.top;
+
+            const distance = Math.sqrt(
+                Math.pow(rabbitX - x, 2) + Math.pow(rabbitY - y, 2)
+            );
+
+            if (distance < 100) {
+                rabbitHealth -= 10;
+                updateHealth();
+
+                // ウサギがダメージを受けたアニメーション
+                rabbit.style.opacity = '0.5';
+                setTimeout(() => {
+                    rabbit.style.opacity = '1';
+                }, 100);
+
+                if (rabbitHealth <= 0) {
+                    endGame();
+                }
+            }
+        }
+
+        function updateHealth() {
+            const healthPercent = Math.max(0, rabbitHealth);
+            healthValue.style.width = healthPercent + '%';
+        }
+
+        function endGame() {
+            gameActive = false;
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'block';
+        }
+
+        // ゲーム開始
+        updateHealth();
+
+        // 定期的にキノコを生成
+        setInterval(() => {
+            if (gameActive) {
+                createMushroom();
+            }
+        }, 1500);
+
+        // 初期キノコ
+        createMushroom();
+    </script>
+</body>
+</html>
